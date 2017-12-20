@@ -1,24 +1,20 @@
 defmodule Route do
-  def find_next({lat, long}, map, traveled \\ []) do
-    value_center = Map.fetch!(map, {lat, long})
-    traveled = [{lat, long}|traveled]
+  def find_next(coordinate, map, traveled \\ {}) do
+    traveled = Tuple.append(traveled, coordinate)
+    current_value = Map.fetch!(map, coordinate)
 
-    north = {lat - 1, long}
-    south = {lat + 1, long}
-    west = {lat, long - 1}
-    east = {lat, long + 1}
-
-    Enum.map([north, east, south, west], fn(loc) ->
-      with {:ok, next_value} <- Map.fetch(map, loc),
-          true <- value_center > next_value
+    Enum.map(directions(coordinate), fn(coor) ->
+      with {:ok, next_value} <- Map.fetch(map, coor),
+           true <- current_value > next_value
       do
-        find_next(loc, map, traveled)
+        find_next(coor, map, traveled)
       else
-        false ->
-          List.to_tuple(traveled)
-        _ ->
-          List.to_tuple(traveled)
+        _ -> traveled
       end
     end)
+  end
+
+  defp directions({lat, long}) do
+    [{lat - 1, long}, {lat, long + 1}, {lat + 1, long}, {lat, long - 1}]
   end
 end

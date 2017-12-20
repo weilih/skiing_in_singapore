@@ -1,12 +1,12 @@
 defmodule SkiingInSingapore do
-  def solve!(filename \\ "map.txt") do
-    list = load(filename)
+  def solve!(filename \\ "test.txt") do
+    list = load_data(filename)
     map_list = Map.new(list)
+
     sorted_list =
       list
-      |> Enum.sort_by(fn {_location, value} -> value end, &>=/2)
-      |> Enum.map(fn {location, _value} -> location end)
-      |> Enum.map(fn(coordinate) -> Route.find_next(coordinate, map_list) end)
+      |> Enum.sort_by(fn {_coor, value} -> value end, &>=/2)
+      |> Enum.map(fn {coor, _value} -> Route.find_next(coor, map_list) end)
       |> List.flatten()
       |> Enum.uniq()
       |> Enum.map(&Tuple.to_list/1)
@@ -18,29 +18,23 @@ defmodule SkiingInSingapore do
       sorted_list
       |> Enum.filter(fn (route) -> length(route) == max_length end)
       |> Enum.max_by(fn (route) ->
-        last = Map.fetch!(map_list, List.last(route))
-        first = Map.fetch!(map_list, List.first(route))
-        last - first
+        first_point = Map.fetch!(map_list, List.first(route))
+        last_point = Map.fetch!(map_list, List.last(route))
+        first_point - last_point
       end)
-      |> Enum.reverse()
       |> IO.inspect(label: "path")
-      |> Enum.map_join("->", fn(point) ->
-        route = Map.fetch!(map_list, point)
-        "#{route}"
-      end)
-      |> IO.inspect(label: "steepest")
+      |> Enum.map_join("->", fn(dot) -> Map.fetch!(map_list, dot) end)
 
     %{longest: max_length, steepest: max_steep}
   end
 
-  def load(filename) do
+  defp load_data(filename) do
     [_info | input_list] =
-      File.read!(filename) |> String.strip() |> String.split("\n")
+      filename |> File.read!() |> String.strip() |> String.split("\n")
 
     input_list
     |> Enum.with_index()
     |> Enum.flat_map(fn({row, index}) -> insert_line(index, row) end)
-    # |> Map.new()
   end
 
   defp insert_line(row_index, line) do
