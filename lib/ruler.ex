@@ -3,26 +3,35 @@ defmodule Ruler do
     routes
     |> Enum.group_by(&hd/1)
     |> Enum.reduce([], fn ({_coordinate, routes}, acc) ->
+         routes = Enum.map(routes, fn (route) -> parse(route, map) end)
          {_length, routes} = find_longest(routes)
-         {_steep, routes} = find_steepest(routes, map)
+         {_steep, routes} = find_steepest(routes)
          [hd(routes) | acc]
        end)
-    |> Enum.sort_by(&length/1, &>=/2)
+       |> Enum.sort_by(&length/1, &>=/2)
   end
 
-  defp find_longest(routes) when is_list(routes) do
+  def find_longest(routes) when is_list(routes) do
     routes
     |> Enum.group_by(&length/1)
     |> Enum.max_by(fn {length, _routes} -> length end)
   end
 
-  defp find_steepest(routes, map) when is_list(routes) do
+  def find_steepest(routes) when is_list(routes) do
     routes
-    |> Enum.group_by(fn (route) -> calc_steepness(route, map) end)
+    |> Enum.group_by(&calc_steepness/1)
     |> Enum.max_by(fn {steep, _routes} -> steep end)
   end
 
-  defp calc_steepness(route, map) when is_list(route) do
-    map[List.first(route)].value - map[List.last(route)].value
+  defp calc_steepness([head | _] = route) when is_map(head) do
+    path = Enum.flat_map(route, &(Map.values/1))
+    List.first(path) - List.last(path)
+  end
+
+  defp parse(route, map) when is_list(route) do
+    Enum.map(route, fn
+      (coor) when is_tuple(coor) -> Map.take(map, [coor])
+      (pair) when is_map(pair) -> pair
+    end)
   end
 end

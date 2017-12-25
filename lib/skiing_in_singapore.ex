@@ -3,20 +3,16 @@ defmodule SkiingInSingapore do
     list = load_data(filename)
     map = Map.new(list)
 
-    max_point =
+    {longest, longest_routes} =
       list
-      |> Enum.sort_by(fn {_coor, point} -> point.value end, &>=/2)
-      |> Enum.reduce(map, fn ({coor, _point}, acc) ->
-           Route.find_next(coor, acc)
-         end)
+      |> Enum.sort_by(fn {_coor, value} -> value end, &>=/2)
+      |> Enum.reduce(map, fn ({coor, _value}, acc) -> Route.run(coor, acc) end)
       |> Map.values()
-      |> Enum.group_by(fn (point) -> point.len end)
-      |> Enum.max_by(fn {length, _points} -> length end)
-      |> case do
-           {_len, points} -> Enum.max_by(points, fn (point) -> point.steep end)
-         end
+      |> Ruler.find_longest()
 
-    %{longest: max_point.len, steepest: max_point.steep}
+    {steepest, _} = Ruler.find_steepest(longest_routes)
+
+    %{longest: longest, steepest: steepest}
   end
 
   defp load_data(filename) do
@@ -33,8 +29,7 @@ defmodule SkiingInSingapore do
     |> String.split("\s")
     |> Enum.with_index()
     |> Enum.map(fn {value, col_index} ->
-         coor = {row_index, col_index}
-         { coor, %Point{coordinate: coor, value: String.to_integer(value)} }
-       end)
+        {{row_index, col_index}, String.to_integer(value)}
+    end)
   end
 end
