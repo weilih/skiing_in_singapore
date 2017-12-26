@@ -5,7 +5,6 @@ defmodule SkiingInSingapore do
 
     {longest, longest_routes} =
       list
-      |> Enum.sort_by(fn {_coor, value} -> value end, &>=/2)
       |> Enum.reduce(map, fn ({coor, _value}, acc) -> Route.run(coor, acc) end)
       |> Map.values()
       |> Ruler.find_longest()

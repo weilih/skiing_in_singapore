@@ -8,7 +8,17 @@ defmodule Ruler do
          {_steep, routes} = find_steepest(routes)
          [hd(routes) | acc]
        end)
-       |> Enum.sort_by(&length/1, &>=/2)
+    |> Enum.group_by(&length/1)
+    |> Enum.sort_by(fn {length, _routes} -> length end)
+    |> Enum.reduce([], fn
+        ({1, routes}, acc) ->
+          sorted = Enum.sort_by(routes, fn (route) ->
+            route |> hd() |> Map.values() |> hd()
+          end, &<=/2)
+          sorted ++ acc
+        ({_length, routes}, acc) ->
+          Enum.sort_by(routes, &calc_steepness/1, &>=/2) ++ acc
+       end)
   end
 
   def find_longest(routes) when is_list(routes) do
