@@ -2,29 +2,57 @@ defmodule Route do
   def find_next(coordinate, map) do
     coordinate
     |> routes(map)
-    |> find_next([coordinate], map)
-    |> best_route(map)
+    |> find_next([], map)
+    |> evaluate_routes(coordinate, map)
+    |> Enum.reduce(map, fn (route, acc) -> update_map(route, acc) end)
   end
 
   defp find_next([], traveled, _map), do: [Enum.reverse(traveled)]
   defp find_next(routes, traveled, map) do
     Enum.flat_map(routes, fn(coor) ->
-      find_next(routes(coor, map), [coor | traveled], map)
+      case Map.fetch(map, coor) do
+        {:ok, %Point{route: nil}} ->
+          find_next(routes(coor, map), [coor|traveled], map)
+
+        {:ok, %Point{route: route}} when is_list(route) ->
+          find_next([], Enum.reverse(route) ++ traveled, map)
+      end
     end)
   end
 
-  defp best_route(routes, map) when is_list(routes) do
-    {_length, routes} = Ruler.find_longest(routes)
-    {_steep, [best_route | _]} = Ruler.find_steepest(routes, map)
-    best_route
+  defp evaluate_routes([[]], coordinate, _map), do: [[coordinate]]
+  defp evaluate_route(route, coordinate, _map) when length(route) == 1 do
+    [[coordinate|route]]
+  end
+  defp evaluate_routes(routes, coordinate, map) do
+    [best_route | other_routes] = Ruler.sort_by_grade(routes, map)
+    [[coordinate | best_route] | other_routes]
+  end
+
+  defp update_map([], map), do: map
+  defp update_map([coordinate | tail] = route, map) do
+    {_point, new_map} =
+      Map.get_and_update!(map, coordinate, fn (point) ->
+        new_point =
+          case point do
+            %Point{route: nil} ->
+              %{point | route: route}
+                |> Point.route_to_path(map)
+                |> Point.path_steep()
+                |> Point.distance()
+            _ -> point
+          end
+        {point, new_point}
+      end)
+    update_map(tail, new_map)
   end
 
   defp routes(coordinate, map) do
-    current_value = Map.fetch!(map, coordinate)
+    current_point = Map.fetch!(map, coordinate)
 
     Enum.filter(directions(coordinate), fn(coor) ->
-      with {:ok, next_value} <- Map.fetch(map, coor),
-        true <- current_value > next_value
+      with {:ok, next_point} <- Map.fetch(map, coor),
+        true <- current_point.value > next_point.value
       do
         true
       else
